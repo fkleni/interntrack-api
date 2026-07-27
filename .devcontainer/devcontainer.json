@@ -1,0 +1,4 @@
+ { "name": "InternTrack API", 
+   "image": "mcr.microsoft.com/devcontainers/java:17-bullseye", 
+   "postCreateCommand": "sudo apt-get update && sudo apt-get install -y postgresql && sudo service postgresql start && sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'postgres';\" && sudo -u postgres createdb interntrack", 
+   "forwardPorts": [8080, 5432] }
