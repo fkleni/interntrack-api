@@ -12,18 +12,25 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 
 ## How to Run (Local Development)
 
+### Option 1: Local Development
 1. Ensure PostgreSQL is running on your local machine.
 2. Create a database and update the credentials in `src/main/resources/application.properties`:
-   ```properties
+```properties
    spring.datasource.url=jdbc:postgresql://localhost:5432/interntrack
    spring.datasource.username=your_username
    spring.datasource.password=your_password
-   ```
+```
 3. Run the application using Maven:
-   ```bash
+```bash
    mvn spring-boot:run
-   ```
+```
 4. The API will be available at `http://localhost:8080`.
+
+### Option 2: GitHub Codespaces
+1. Go to the repository on GitHub.
+2. Click **Code > Codespaces > Create codespace on main**.
+3. The container automatically installs Java 17 and PostgreSQL.
+4. Run the application from the Codespaces terminal.
 
 ## API Endpoints
 
@@ -59,3 +66,22 @@ A RESTful API built with Spring Boot to track internship applications. It allows
   "notes": "Referral used."
 }
 ```
+
+### Validation
+
+Requests with missing or invalid fields (`companyName`, `position`, `status`, `appliedDate`) are handled by a centralized `GlobalExceptionHandler`. It intercepts validation failures and returns a structured `400 Bad Request` response detailing each failing field, instead of a generic server error.
+
+#### Example Error Response
+
+```json
+{
+  "timestamp": "2026-07-28T14:30:15.12345",
+  "status": 400,
+  "errors": {
+    "companyName": "Company name cannot be blank",
+    "appliedDate": "Applied date cannot be in the future"
+  }
+}
+```
+
+Requests to non-existent resources (e.g., `GET /api/applications/999`) return a `404 Not Found` with a similarly structured error message.
