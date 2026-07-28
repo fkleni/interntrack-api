@@ -2,6 +2,7 @@ package com.interntrack.api.controller;
 
 import com.interntrack.api.entity.Application;
 import com.interntrack.api.service.ApplicationService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +18,7 @@ public class ApplicationController {
         this.service = service;
     }
     @PostMapping
-    public ResponseEntity<Application> createApplication(@RequestBody Application application) {
+    public ResponseEntity<Application> createApplication(@Valid @RequestBody Application application) {
         Application saved = service.saveApplication(application);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -33,7 +34,7 @@ public class ApplicationController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Application> update(@PathVariable Long id, @RequestBody Application application) {
+    public ResponseEntity<Application> update(@PathVariable Long id,@Valid @RequestBody Application application) {
         return ResponseEntity.ok(service.updateApplication(id, application));
     }
 
