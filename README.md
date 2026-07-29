@@ -30,7 +30,9 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 1. Go to the repository on GitHub.
 2. Click **Code > Codespaces > Create codespace on main**.
 3. The container automatically installs Java 17 and PostgreSQL.
-4. Run the application from the Codespaces terminal.
+4. Run the application from the Codespaces terminal:
+   ```bash
+   ./mvnw spring-boot:run
 
 ## API Endpoints
 
