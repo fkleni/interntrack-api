@@ -1,5 +1,6 @@
 package com.interntrack.api.controller;
 
+import com.interntrack.api.dto.DashboardStats;
 import com.interntrack.api.entity.Application;
 import com.interntrack.api.service.ApplicationService;
 import jakarta.validation.Valid;
@@ -26,6 +27,11 @@ public class ApplicationController {
     @GetMapping
     public ResponseEntity<List<Application>> getAllApplications() {
         return ResponseEntity.ok(service.getAllApplications());
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<DashboardStats> getDashboard() {
+        return ResponseEntity.ok(service.getDashboardStats());
     }
 
     @GetMapping("/{id}")
