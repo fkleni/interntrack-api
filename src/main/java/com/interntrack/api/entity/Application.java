@@ -1,6 +1,6 @@
 package com.interntrack.api.entity;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +19,7 @@ import java.time.LocalDate;
 public class Application {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Schema(accessMode = Schema.AccessMode.READ_ONLY)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
 
     @NotBlank(message = "Company name cannot be blank")
@@ -34,6 +34,8 @@ public class Application {
     @NotNull(message = "Applied date cannot be null")
     @PastOrPresent(message = "Applied date cannot be in the future")
     private LocalDate appliedDate;
+
+    private LocalDate interviewDate;
 
     private String notes;
 }
