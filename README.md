@@ -7,6 +7,8 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 * **Spring Data JPA**
 * **Spring Security + JWT**
 * **PostgreSQL**
+* **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
+* **Swagger / OpenAPI**
 * **Lombok**
 
 ## How to Run
@@ -24,15 +26,17 @@ A RESTful API built with Spring Boot to track internship applications. It allows
    mvn spring-boot:run
 ```
 4. The API will be available at `http://localhost:8080`.
+5. Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ### Option 2: GitHub Codespaces
 1. Go to the repository on GitHub.
 2. Click **Code > Codespaces > Create codespace on main**.
-3. The container automatically installs Java 17 and PostgreSQL.
-4. Run the application from the Codespaces terminal:
+3. The container automatically installs Java 17, PostgreSQL, and Redis.
+4. Run the application with the `codespaces` profile to enable Redis-backed caching:
 ```bash
-   ./mvnw spring-boot:run
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=codespaces
 ```
+5. Open the forwarded port 8080 URL and append `/swagger-ui.html`.
 
 ## API Endpoints
 
@@ -45,6 +49,7 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 | `GET` | `/api/applications/{id}` | Retrieves details of a specific application by its ID. *(requires token)* |
 | `PUT` | `/api/applications/{id}` | Updates an existing application. *(requires token)* |
 | `DELETE` | `/api/applications/{id}` | Deletes an application from the system. *(requires token)* |
+| `GET` | `/api/applications/dashboard` | Returns total application count and a breakdown by status. *(requires token)* |
 
 ### Example Request Body (`POST` / `PUT` for `/api/applications`)
 
@@ -70,6 +75,27 @@ A RESTful API built with Spring Boot to track internship applications. It allows
   "notes": "Referral used."
 }
 ```
+
+## Dashboard & Caching
+
+The `/api/applications/dashboard` endpoint returns the total number of applications and a dynamic breakdown by status (grouped by whatever status values actually exist in the database, rather than a fixed set).
+
+```json
+{
+  "total": 2,
+  "statusCounts": {
+    "Applied": 2
+  }
+}
+```
+
+Results are cached to avoid recomputing the breakdown on every request. The cache is invalidated automatically whenever an application is created, updated, or deleted. The application uses Spring's Cache abstraction, so the same `@Cacheable`/`@CacheEvict` code works with two different backends depending on the environment:
+- **Local development:** in-memory Simple Cache (no external dependency required).
+- **GitHub Codespaces:** Redis, running in the container.
+
+## API Documentation (Swagger)
+
+Interactive API documentation is available via Swagger UI at `/swagger-ui.html`. All protected endpoints can be tested directly from the browser after authorizing with a JWT token (obtained from `/api/auth/login`) via the **Authorize** button.
 
 ### Validation
 
@@ -145,3 +171,7 @@ Requests without a valid token return a `401 Unauthorized` response:
   "message": "Authentication required. Please provide a valid token."
 }
 ```
+
+## Known Limitations
+
+- Applications are not yet scoped to individual users — all authenticated users currently share the same pool of application records. Per-user data ownership is a planned improvement.
