@@ -8,6 +8,7 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 * **Spring Security + JWT**
 * **PostgreSQL**
 * **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
+* **Spring Mail + Spring Scheduler** (automated interview reminder emails)
 * **Swagger / OpenAPI**
 * **Lombok**
 
@@ -21,22 +22,26 @@ A RESTful API built with Spring Boot to track internship applications. It allows
    spring.datasource.username=your_username
    spring.datasource.password=your_password
 ```
-3. Run the application using Maven:
+3. Set the following environment variables for email notifications (see [Interview Reminders](#interview-reminders)):
+   - `MAIL_USERNAME` — sending Gmail address
+   - `MAIL_PASSWORD` — Gmail App Password (not your regular Gmail password)
+4. Run the application using Maven:
 ```bash
    mvn spring-boot:run
 ```
-4. The API will be available at `http://localhost:8080`.
-5. Swagger UI: `http://localhost:8080/swagger-ui.html`
+5. The API will be available at `http://localhost:8080`.
+6. Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ### Option 2: GitHub Codespaces
 1. Go to the repository on GitHub.
-2. Click **Code > Codespaces > Create codespace on main**.
-3. The container automatically installs Java 17, PostgreSQL, and Redis.
-4. Run the application with the `codespaces` profile to enable Redis-backed caching:
+2. Add `MAIL_USERNAME` and `MAIL_PASSWORD` as [Codespaces repository secrets](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces) so they're injected automatically.
+3. Click **Code > Codespaces > Create codespace on main**.
+4. The container automatically installs Java 17, PostgreSQL, and Redis.
+5. Run the application with the `codespaces` profile to enable Redis-backed caching:
 ```bash
    ./mvnw spring-boot:run -Dspring-boot.run.profiles=codespaces
 ```
-5. Open the forwarded port 8080 URL and append `/swagger-ui.html`.
+6. Open the forwarded port 8080 URL and append `/swagger-ui.html`.
 
 ## API Endpoints
 
@@ -59,9 +64,12 @@ A RESTful API built with Spring Boot to track internship applications. It allows
   "position": "Backend Developer Intern",
   "status": "Applied",
   "appliedDate": "2026-07-17",
+  "interviewDate": "2026-07-25",
   "notes": "Referral used."
 }
 ```
+
+`interviewDate` is optional — leave it out (or set it to `null`) until an interview is actually scheduled.
 
 ### Example Response
 
@@ -72,6 +80,7 @@ A RESTful API built with Spring Boot to track internship applications. It allows
   "position": "Backend Developer Intern",
   "status": "Applied",
   "appliedDate": "2026-07-17",
+  "interviewDate": "2026-07-25",
   "notes": "Referral used."
 }
 ```
@@ -92,6 +101,21 @@ The `/api/applications/dashboard` endpoint returns the total number of applicati
 Results are cached to avoid recomputing the breakdown on every request. The cache is invalidated automatically whenever an application is created, updated, or deleted. The application uses Spring's Cache abstraction, so the same `@Cacheable`/`@CacheEvict` code works with two different backends depending on the environment:
 - **Local development:** in-memory Simple Cache (no external dependency required).
 - **GitHub Codespaces:** Redis, running in the container.
+
+## Interview Reminders
+
+A scheduled job runs daily at **08:00** and checks for applications with an `interviewDate` set to today or tomorrow. For each match, it sends a reminder email via Gmail SMTP using `JavaMailSender`.
+
+Mail credentials are never hardcoded or committed to the repository. They're read from environment variables:
+
+```properties
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
+```
+
+`MAIL_PASSWORD` should be a [Gmail App Password](https://myaccount.google.com/apppasswords), generated separately from your main account password, so it can be revoked independently if ever exposed.
+
+> **Note:** Reminder emails are currently sent to a fixed address, since applications aren't yet linked to individual users. Per-user email support is a planned improvement (see Known Limitations).
 
 ## API Documentation (Swagger)
 
@@ -174,4 +198,4 @@ Requests without a valid token return a `401 Unauthorized` response:
 
 ## Known Limitations
 
-- Applications are not yet scoped to individual users — all authenticated users currently share the same pool of application records. Per-user data ownership is a planned improvement.
+- Applications are not yet scoped to individual users — all authenticated users currently share the same pool of application records. Per-user data ownership, along with per-user email addresses for interview reminders, is a planned improvement.
