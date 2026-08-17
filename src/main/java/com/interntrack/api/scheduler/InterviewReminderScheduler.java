@@ -45,7 +45,7 @@ public class InterviewReminderScheduler {
                 System.out.println("Email sent successfully for application id: " + app.getId());
                 app.setLastReminderSentDate(today);
                 repository.save(app);
-                Thread.sleep(2000);
+                Thread.sleep(5000);
             } catch (Exception e) {
                 System.out.println("Failed to send email for application id: " + app.getId() + " - Error: " + e.getMessage());
             }
