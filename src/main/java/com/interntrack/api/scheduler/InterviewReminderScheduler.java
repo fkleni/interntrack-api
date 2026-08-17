@@ -20,7 +20,7 @@ public class InterviewReminderScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(cron = "0 */5 * * * *", zone = "Europe/Istanbul")
+    @Scheduled(fixedRate = 60000)
     public void sendInterviewReminders() {
         System.out.println("Scheduler triggered at: " + java.time.LocalDateTime.now());
 
