@@ -37,5 +37,7 @@ public class Application {
 
     private LocalDate interviewDate;
 
+    private LocalDate lastReminderSentDate;
+
     private String notes;
 }
