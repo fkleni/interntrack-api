@@ -36,11 +36,16 @@ public class InterviewReminderScheduler {
         System.out.println("Found " + upcoming.size() + " applications to remind.");
 
         for (Application app : upcoming) {
-            emailService.sendReminderEmail(
-                    "projefadime@gmail.com",
-                    app.getCompanyName(),
-                    app.getInterviewDate()
-            );
+            try {
+                emailService.sendReminderEmail(
+                        "projefadime@gmail.com",
+                        app.getCompanyName(),
+                        app.getInterviewDate()
+                );
+                System.out.println("Email sent successfully for application id: " + app.getId());
+            } catch (Exception e) {
+                System.out.println("Failed to send email for application id: " + app.getId() + " - Error: " + e.getMessage());
+            }
             app.setLastReminderSentDate(today);
             repository.save(app);
         }
