@@ -20,7 +20,7 @@ public class InterviewReminderScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(cron = "0 */1 * * * *", zone = "Europe/Istanbul")
+    @Scheduled(fixedRate = 60000)
     public void sendInterviewReminders() {
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
@@ -28,7 +28,6 @@ public class InterviewReminderScheduler {
         List<Application> upcoming = repository.findAll().stream()
                 .filter(app -> app.getInterviewDate() != null)
                 .filter(app -> app.getInterviewDate().equals(today) || app.getInterviewDate().equals(tomorrow))
-                .filter(app -> app.getLastReminderSentDate() == null || !app.getLastReminderSentDate().equals(today))
                 .toList();
 
         for (Application app : upcoming) {
@@ -37,8 +36,6 @@ public class InterviewReminderScheduler {
                     app.getCompanyName(),
                     app.getInterviewDate()
             );
-            app.setLastReminderSentDate(today);
-            repository.save(app);
         }
     }
 }
