@@ -22,6 +22,8 @@ public class InterviewReminderScheduler {
 
     @Scheduled(cron = "0 */5 * * * *", zone = "Europe/Istanbul")
     public void sendInterviewReminders() {
+        System.out.println("Scheduler triggered at: " + java.time.LocalDateTime.now());
+
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
 
@@ -30,6 +32,8 @@ public class InterviewReminderScheduler {
                 .filter(app -> app.getInterviewDate().equals(today) || app.getInterviewDate().equals(tomorrow))
                 .filter(app -> app.getLastReminderSentDate() == null || !app.getLastReminderSentDate().equals(today))
                 .toList();
+
+        System.out.println("Found " + upcoming.size() + " applications to remind.");
 
         for (Application app : upcoming) {
             emailService.sendReminderEmail(
