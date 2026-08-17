@@ -43,11 +43,11 @@ public class InterviewReminderScheduler {
                         app.getInterviewDate()
                 );
                 System.out.println("Email sent successfully for application id: " + app.getId());
+                app.setLastReminderSentDate(today);
+                repository.save(app);
             } catch (Exception e) {
                 System.out.println("Failed to send email for application id: " + app.getId() + " - Error: " + e.getMessage());
             }
-            app.setLastReminderSentDate(today);
-            repository.save(app);
         }
     }
 }
