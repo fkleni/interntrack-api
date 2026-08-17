@@ -1,6 +1,14 @@
 # InternTrack API
 A RESTful API built with Spring Boot to track internship applications. It allows users to easily keep logs of the companies they applied to, their application status, and interview notes.
 
+## Live Demo
+
+The API is deployed and publicly accessible:
+
+- **Swagger UI:** [https://interntrack-api-2v39.onrender.com/swagger-ui/index.html](https://interntrack-api-2v39.onrender.com/swagger-ui/index.html)
+
+> **Note:** The free Render instance spins down after 15 minutes of inactivity. The first request after idling may take 30–60 seconds to respond while it wakes up.
+
 ## Tech Stack
 * **Java 17**
 * **Spring Boot 3**
@@ -9,8 +17,13 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 * **PostgreSQL**
 * **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
 * **Spring Mail + Spring Scheduler** (automated interview reminder emails)
+* **Docker** (containerized deployment on Render)
 * **Swagger / OpenAPI**
 * **Lombok**
+
+## Deployment Architecture
+
+The application is deployed as a Docker container on **Render**, connected to a **Neon** PostgreSQL database (both free tier). Every push to the `main` branch automatically triggers a redeploy via Render's built-in CI/CD.
 
 ## How to Run
 
