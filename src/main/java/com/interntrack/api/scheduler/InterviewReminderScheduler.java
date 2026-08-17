@@ -20,10 +20,8 @@ public class InterviewReminderScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(cron = "0 */1 * * * *", zone = "Europe/Istanbul")
     public void sendInterviewReminders() {
-        System.out.println("Scheduler triggered at: " + java.time.LocalDateTime.now());
-
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
 
@@ -33,22 +31,14 @@ public class InterviewReminderScheduler {
                 .filter(app -> app.getLastReminderSentDate() == null || !app.getLastReminderSentDate().equals(today))
                 .toList();
 
-        System.out.println("Found " + upcoming.size() + " applications to remind.");
-
         for (Application app : upcoming) {
-            try {
-                emailService.sendReminderEmail(
-                        "projefadime@gmail.com",
-                        app.getCompanyName(),
-                        app.getInterviewDate()
-                );
-                System.out.println("Email sent successfully for application id: " + app.getId());
-                app.setLastReminderSentDate(today);
-                repository.save(app);
-                Thread.sleep(5000);
-            } catch (Exception e) {
-                System.out.println("Failed to send email for application id: " + app.getId() + " - Error: " + e.getMessage());
-            }
+            emailService.sendReminderEmail(
+                    "projefadime@gmail.com",
+                    app.getCompanyName(),
+                    app.getInterviewDate()
+            );
+            app.setLastReminderSentDate(today);
+            repository.save(app);
         }
     }
 }
