@@ -20,7 +20,7 @@ public class InterviewReminderScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(cron = "0 0 8 * * *")
+    @Scheduled(cron = "0 0 8 * * *", zone = "Europe/Istanbul")
     public void sendInterviewReminders() {
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
