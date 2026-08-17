@@ -37,6 +37,7 @@ public class Application {
 
     private LocalDate interviewDate;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDate lastReminderSentDate;
 
     private String notes;
