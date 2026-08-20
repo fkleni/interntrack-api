@@ -211,4 +211,4 @@ Requests without a valid token return a `401 Unauthorized` response:
 
 ## Known Limitations
 
-- Applications are not yet scoped to individual users — all authenticated users currently share the same pool of application records. Per-user data ownership, along with per-user email addresses for interview reminders, is a planned improvement.
+- Applications are not yet scoped to individual users — all authenticated users currently share the same pool of application records. Per-user data ownership, along with per-user email addresses for interview reminders, is a planned improvement. 
