@@ -1,5 +1,6 @@
 package com.interntrack.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -38,4 +39,12 @@ public class Application {
     private LocalDate interviewDate;
 
     private String notes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnore
+    private User owner;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private LocalDate lastReminderSentDate;
 }

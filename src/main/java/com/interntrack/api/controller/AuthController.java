@@ -2,10 +2,14 @@ package com.interntrack.api.controller;
 
 import com.interntrack.api.dto.AuthRequest;
 import com.interntrack.api.dto.AuthResponse;
+import com.interntrack.api.dto.DeleteAccountRequest;
 import com.interntrack.api.entity.User;
+import com.interntrack.api.repository.ApplicationRepository;
 import com.interntrack.api.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import com.interntrack.api.util.JwtUtil;
 
@@ -13,11 +17,16 @@ import com.interntrack.api.util.JwtUtil;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final UserRepository userRepository;
+    private final ApplicationRepository applicationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthController(UserRepository userRepository,
+                          ApplicationRepository applicationRepository,
+                          PasswordEncoder passwordEncoder,
+                          JwtUtil jwtUtil) {
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
@@ -53,5 +62,26 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(user.getUsername());
         return ResponseEntity.ok(new AuthResponse(token));
+    }
+
+    @DeleteMapping("/delete-account")
+    @Transactional
+    public ResponseEntity<String> deleteAccount(@RequestBody DeleteAccountRequest request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByUsername(username)
+                .orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.status(401).body("User not found");
+        }
+
+        if (request.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            return ResponseEntity.status(401).body("Incorrect password");
+        }
+        applicationRepository.deleteByOwner(user);
+        userRepository.delete(user);
+
+        return ResponseEntity.ok("Account and all associated applications deleted successfully");
     }
 }
