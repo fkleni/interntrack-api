@@ -6,22 +6,22 @@ A RESTful API built with Spring Boot to track internship applications. It allows
 
 The API is deployed and publicly accessible:
 
-- Swagger UI: https://interntrack-api-2v39.onrender.com/swagger-ui/index.html
+- **Swagger UI:** https://interntrack-api-2v39.onrender.com/swagger-ui/index.html
 
-Note: The free Render instance spins down after 15 minutes of inactivity. The first request after idling may take 30–60 seconds to respond while it wakes up.
+> **Note:** The free Render instance spins down after 15 minutes of inactivity. The first request after idling may take 30–60 seconds to respond while it wakes up.
 
 ## Tech Stack
 
-- Java 17
-- Spring Boot 3
-- Spring Data JPA
-- Spring Security + JWT
-- PostgreSQL
-- Redis (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
-- Spring Mail + Spring Scheduler (automated interview reminder emails)
-- Docker (containerized deployment on Render)
-- Swagger / OpenAPI
-- Lombok
+* **Java 17**
+* **Spring Boot 3**
+* **Spring Data JPA**
+* **Spring Security + JWT**
+* **PostgreSQL**
+* **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
+* **Spring Mail + Spring Scheduler** (automated interview reminder emails)
+* **Docker** (containerized deployment on Render)
+* **Swagger / OpenAPI**
+* **Lombok**
 
 ## Deployment Architecture
 
@@ -93,7 +93,7 @@ The application is deployed as a Docker container on **Render**, connected to a 
 }
 ```
 
-`interviewDate` is optional — leave it out (or set it to null) until an interview is actually scheduled.
+`interviewDate` is optional — leave it out (or set it to `null`) until an interview is actually scheduled.
 
 ### Example Response
 
@@ -148,11 +148,11 @@ spring.mail.password=${MAIL_PASSWORD}
 
 Interactive API documentation is available via Swagger UI at `/swagger-ui.html`. All protected endpoints can be tested directly from the browser after authorizing with a JWT token (obtained from `/api/auth/login`) via the **Authorize** button.
 
-## Validation
+### Validation
 
 Requests with missing or invalid fields (`companyName`, `position`, `status`, `appliedDate`) are handled by a centralized `GlobalExceptionHandler`. It intercepts validation failures and returns a structured `400 Bad Request` response detailing each failing field, instead of a generic server error.
 
-### Example Error Response
+#### Example Error Response
 
 ```json
 {
