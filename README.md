@@ -8,7 +8,7 @@ The API is deployed and publicly accessible:
 
 - **Swagger UI:** https://interntrack-api-2v39.onrender.com/swagger-ui/index.html
 
-> **Note:** The free Render instance spins down after 15 minutes of inactivity. The first request after idling may take 30–60 seconds to respond while it wakes up.
+> **Note:** The free Render instance spins down after 15 minutes of inactivity. The first request after idling may take a few minutes (up to ~3 minutes) to respond while it wakes up.
 
 ## Tech Stack
 
