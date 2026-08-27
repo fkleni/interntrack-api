@@ -211,7 +211,7 @@ Returns a JWT token on success:
 
 Include the token in the `Authorization` header for all protected endpoints:
 
-```
+```http
 Authorization: Bearer <your_token>
 ```
 
