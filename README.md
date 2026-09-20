@@ -2,6 +2,41 @@
 
 A RESTful API built with Spring Boot to track internship applications. It allows users to easily keep logs of the companies they applied to, their application status, and interview notes.
 
+## Architecture
+
+```
+                         ┌──────────────────┐
+                         │   JWT Filter     │
+                         │ (auth on every   │
+                         │    request)      │
+                         └────────┬─────────┘
+                                  │
+ Client ───HTTP───▶  Controller ─┼─▶ Service ───▶ Repository ───▶ PostgreSQL
+ (Swagger/           (REST API)   │  (business    (Spring Data     (Neon)
+  Postman)                        │   logic)       JPA)
+                                  │
+                        ┌─────────┴─────────┐
+                        │      Cache        │
+                        │ (dashboard stats, │
+                        │  per-user key)    │
+                        └───────────────────┘
+
+                        ┌────────────────────┐
+                        │     Scheduler      │
+                        │ (runs every 5 min, │
+                        │  independent of    │
+                        │  HTTP requests)    │
+                        └─────────┬──────────┘
+                                  │
+                                  ▼
+                        Repository ──▶ PostgreSQL
+                                  │
+                                  ▼
+                            EmailService ──▶ Gmail SMTP
+```
+
+Every incoming request passes through the **JWT Filter** before reaching a controller, except for `/api/auth/register` and `/api/auth/login`. The **Scheduler** runs independently of any client request, on its own timer, and talks directly to the repository and mail layer.
+
 ## Live Demo
 
 The API is deployed and publicly accessible:
@@ -79,6 +114,9 @@ The application is deployed as a Docker container on **Render**, connected to a 
 | `PUT` | `/api/applications/{id}` | Updates an existing application, if it belongs to the authenticated user. *(requires token)* |
 | `DELETE` | `/api/applications/{id}` | Deletes an application, if it belongs to the authenticated user. *(requires token)* |
 | `GET` | `/api/applications/dashboard` | Returns total application count and a status breakdown, scoped to the authenticated user. *(requires token)* |
+| `POST` | `/api/applications/{id}/upload-cv` | Uploads a PDF CV for the given application, replacing any previously uploaded file. *(requires token)* |
+| `GET` | `/api/applications/{id}/download-cv` | Downloads the CV file attached to the given application. *(requires token)* |
+| `DELETE` | `/api/applications/{id}/delete-cv` | Deletes the CV file attached to the given application. *(requires token)* |
 
 ### Example Request Body (`POST` / `PUT` for `/api/applications`)
 
@@ -143,6 +181,20 @@ spring.mail.password=${MAIL_PASSWORD}
 ```
 
 `MAIL_PASSWORD` should be a [Gmail App Password](https://myaccount.google.com/apppasswords), generated separately from your main account password, so it can be revoked independently if ever exposed.
+
+> **Note:** On the deployed Render instance, outbound SMTP connections on port 587 are currently blocked by Render's free-tier network restrictions, so reminder emails are not delivered in production. The feature works correctly when run locally or in Codespaces with `MAIL_USERNAME`/`MAIL_PASSWORD` set.
+
+## File Upload (CV)
+
+Each application can have one PDF CV attached to it, uploaded via `POST /api/applications/{id}/upload-cv`.
+
+- Only PDF files are accepted; anything else returns a `400 Bad Request`.
+- Uploading a new file for an application that already has one automatically replaces the old file — there's no separate "update" endpoint, just upload again.
+- `DELETE /api/applications/{id}/delete-cv` removes the file without uploading a replacement.
+- Deleting an application also deletes its attached CV file.
+- All of the above respect ownership: you can only upload, download, or delete a CV for an application that belongs to you.
+
+> **Important — file persistence on Render:** The deployed instance stores uploaded files on the container's local disk, which is **not persistent** on Render's free tier. Every redeploy (including the automatic ones triggered by pushes to `main`) wipes the filesystem, so any previously uploaded CVs will be gone after that. The database record (`cvFilePath`) may still reference a file that no longer exists. This is a known limitation of the free hosting tier — a production setup would use persistent object storage (e.g. S3, Cloudinary) instead of local disk. Locally, files persist normally in the `uploads/` folder between runs.
 
 ## API Documentation (Swagger)
 
@@ -242,4 +294,5 @@ Permanently deletes the authenticated user's account along with all of their app
 
 ## Known Limitations
 
-- The free Render/Neon hosting tier has its own constraints (cold starts, SMTP port restrictions in production) — see the note at the top of this README.
+- **Production email delivery:** Render's free tier blocks outbound SMTP on port 587, so interview reminder emails are not sent when running on the deployed instance. This works correctly locally or in Codespaces.
+- **File persistence on Render:** Uploaded CV files are stored on local disk, which is wiped on every redeploy on Render's free tier. A production deployment would need persistent object storage (e.g. S3) instead. Local runs are unaffected.
