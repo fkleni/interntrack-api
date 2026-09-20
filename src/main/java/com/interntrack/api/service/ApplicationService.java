@@ -8,8 +8,10 @@ import com.interntrack.api.repository.ApplicationRepository;
 import com.interntrack.api.repository.UserRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.io.Resource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -19,10 +21,14 @@ import java.util.stream.Collectors;
 public class ApplicationService {
     private final ApplicationRepository repository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
-    public ApplicationService(ApplicationRepository repository, UserRepository userRepository) {
+    public ApplicationService(ApplicationRepository repository,
+                              UserRepository userRepository,
+                              FileStorageService fileStorageService) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     public User getCurrentUser() {
@@ -61,6 +67,9 @@ public class ApplicationService {
     @CacheEvict(value = "dashboardStats", allEntries = true)
     public void deleteApplication(Long id) {
         Application existing = getApplicationById(id);
+        if (existing.getCvFilePath() != null) {
+            fileStorageService.delete(existing.getCvFilePath());
+        }
         repository.delete(existing);
     }
 
@@ -72,5 +81,52 @@ public class ApplicationService {
                 .collect(Collectors.groupingBy(Application::getStatus, Collectors.counting()));
 
         return new DashboardStats(all.size(), statusCounts);
+    }
+
+    public Application uploadCv(Long id, MultipartFile file) {
+        Application application = getApplicationById(id);
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Uploaded file is empty");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equals("application/pdf")) {
+            throw new IllegalArgumentException("Only PDF files are allowed");
+        }
+
+        String previousPath = application.getCvFilePath();
+
+        String storedPath = fileStorageService.store(file, application.getId());
+        application.setCvFilePath(storedPath);
+        Application saved = repository.save(application);
+
+        if (previousPath != null) {
+            fileStorageService.delete(previousPath);
+        }
+
+        return saved;
+    }
+
+    public void deleteCv(Long id) {
+        Application application = getApplicationById(id);
+
+        if (application.getCvFilePath() == null) {
+            throw new ResourceNotFoundException("This application has no CV file to delete");
+        }
+
+        fileStorageService.delete(application.getCvFilePath());
+        application.setCvFilePath(null);
+        repository.save(application);
+    }
+
+    public Resource downloadCv(Long id) {
+        Application application = getApplicationById(id);
+
+        if (application.getCvFilePath() == null) {
+            throw new ResourceNotFoundException("This application has no CV file uploaded");
+        }
+
+        return fileStorageService.loadAsResource(application.getCvFilePath());
     }
 }

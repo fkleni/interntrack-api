@@ -25,7 +25,7 @@ public class InterviewReminderScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(cron = "0 */5 * * * *", zone = "Europe/Istanbul")
     @Transactional
     public void sendInterviewReminders() {
         LocalDate today = LocalDate.now();

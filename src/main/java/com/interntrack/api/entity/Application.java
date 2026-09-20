@@ -47,4 +47,7 @@ public class Application {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDate lastReminderSentDate;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String cvFilePath;
 }
