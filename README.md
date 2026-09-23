@@ -1,6 +1,8 @@
 # InternTrack API
 
-A RESTful API built with Spring Boot to track internship applications. It allows users to easily keep logs of the companies they applied to, their application status, and interview notes.
+A backend-only REST API, built with Spring Boot, for tracking internship applications end to end — from logging a new application through to interview reminders and CV storage.
+
+Every user's data is fully isolated (JWT-based auth, ownership checks on every request), interview reminders go out automatically by email, and uploaded CVs are stored persistently via Cloudinary rather than local disk. Built as a hands-on exercise in layered Spring Boot architecture: Controller → Service → Repository, with caching, scheduling, and file storage each handled as their own concern.
 
 ## Architecture
 
@@ -54,6 +56,7 @@ The API is deployed and publicly accessible:
 * **PostgreSQL**
 * **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
 * **Spring Mail + Spring Scheduler** (automated interview reminder emails)
+* **Cloudinary** (persistent storage for uploaded CV files)
 * **Docker** (containerized deployment on Render)
 * **Swagger / OpenAPI**
 * **Lombok**
@@ -75,9 +78,9 @@ The application is deployed as a Docker container on **Render**, connected to a 
    spring.datasource.password=your_password
 ```
 
-3. Set the following environment variables for email notifications (see [Interview Reminders](#interview-reminders)):
-   - `MAIL_USERNAME` — sending Gmail address
-   - `MAIL_PASSWORD` — Gmail App Password (not your regular Gmail password)
+3. Set the following environment variables:
+   - `MAIL_USERNAME` / `MAIL_PASSWORD` — for email notifications (see [Interview Reminders](#interview-reminders))
+   - `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — for CV file storage (see [File Upload](#file-upload-cv))
 4. Run the application using Maven:
 
 ```bash
@@ -90,7 +93,7 @@ The application is deployed as a Docker container on **Render**, connected to a 
 ### Option 2: GitHub Codespaces
 
 1. Go to the repository on GitHub.
-2. Add `MAIL_USERNAME` and `MAIL_PASSWORD` as [Codespaces repository secrets](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces) so they're injected automatically.
+2. Add `MAIL_USERNAME`, `MAIL_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` as [Codespaces repository secrets](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces) so they're injected automatically.
 3. Click **Code > Codespaces > Create codespace on main**.
 4. The container automatically installs Java 17, PostgreSQL, and Redis.
 5. Run the application with the `codespaces` profile to enable Redis-backed caching:
@@ -194,11 +197,19 @@ Each application can have one PDF CV attached to it, uploaded via `POST /api/app
 - Deleting an application also deletes its attached CV file.
 - All of the above respect ownership: you can only upload, download, or delete a CV for an application that belongs to you.
 
-> **Important — file persistence on Render:** The deployed instance stores uploaded files on the container's local disk, which is **not persistent** on Render's free tier. Every redeploy (including the automatic ones triggered by pushes to `main`) wipes the filesystem, so any previously uploaded CVs will be gone after that. The database record (`cvFilePath`) may still reference a file that no longer exists. This is a known limitation of the free hosting tier — a production setup would use persistent object storage (e.g. S3, Cloudinary) instead of local disk. Locally, files persist normally in the `uploads/` folder between runs.
+Files are stored on **Cloudinary** rather than local disk, so they persist across redeploys — including on Render's free tier, where the container's local filesystem is wiped on every redeploy. Credentials are read from environment variables and never committed to the repository:
+
+```properties
+cloudinary.cloud-name=${CLOUDINARY_CLOUD_NAME}
+cloudinary.api-key=${CLOUDINARY_API_KEY}
+cloudinary.api-secret=${CLOUDINARY_API_SECRET}
+```
 
 ## API Documentation (Swagger)
 
 Interactive API documentation is available via Swagger UI at `/swagger-ui.html`. All protected endpoints can be tested directly from the browser after authorizing with a JWT token (obtained from `/api/auth/login`) via the **Authorize** button.
+
+![Swagger endpoint list](swagger-endpoints.png)
 
 ### Validation
 
@@ -295,4 +306,3 @@ Permanently deletes the authenticated user's account along with all of their app
 ## Known Limitations
 
 - **Production email delivery:** Render's free tier blocks outbound SMTP on port 587, so interview reminder emails are not sent when running on the deployed instance. This works correctly locally or in Codespaces.
-- **File persistence on Render:** Uploaded CV files are stored on local disk, which is wiped on every redeploy on Render's free tier. A production deployment would need persistent object storage (e.g. S3) instead. Local runs are unaffected.
