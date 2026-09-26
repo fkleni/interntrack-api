@@ -1,8 +1,8 @@
 # InternTrack API
 
-A backend-only REST API, built with Spring Boot, for tracking internship applications end to end — from logging a new application through to interview reminders and CV storage.
+A backend-only REST API, built with Spring Boot, for tracking internship applications end to end — from logging a new application through to interview reminders, CV storage, and AI-powered gap analysis against job descriptions.
 
-Every user's data is fully isolated (JWT-based auth, ownership checks on every request), interview reminders go out automatically by email, and uploaded CVs are stored persistently via Cloudinary rather than local disk. Built as a hands-on exercise in layered Spring Boot architecture: Controller → Service → Repository, with caching, scheduling, and file storage each handled as their own concern.
+Every user's data is fully isolated (JWT-based auth, ownership checks on every request), interview reminders go out automatically by email, uploaded CVs are stored persistently via Cloudinary, and each application can be analyzed against its own job description using Gemini — comparing the applicant's actual CV, not a fixed skill list. Built as a hands-on exercise in layered Spring Boot architecture: Controller → Service → Repository, with caching, scheduling, file storage, and an external AI integration each handled as their own concern.
 
 ## Architecture
 
@@ -16,12 +16,14 @@ Every user's data is fully isolated (JWT-based auth, ownership checks on every r
  Client ───HTTP───▶  Controller ─┼─▶ Service ───▶ Repository ───▶ PostgreSQL
  (Swagger/           (REST API)   │  (business    (Spring Data     (Neon)
   Postman)                        │   logic)       JPA)
-                                  │
-                        ┌─────────┴─────────┐
-                        │      Cache        │
-                        │ (dashboard stats, │
-                        │  per-user key)    │
-                        └───────────────────┘
+                                  │         │
+                        ┌─────────┴──┐   ┌──┴───────────────┐
+                        │   Cache    │   │  GeminiService   │
+                        │ (dashboard │   │ (AI gap analysis │
+                        │  stats,    │   │  via Gemini API) │
+                        │  per-user  │   └──────────────────┘
+                        │    key)    │
+                        └────────────┘
 
                         ┌────────────────────┐
                         │     Scheduler      │
@@ -37,7 +39,7 @@ Every user's data is fully isolated (JWT-based auth, ownership checks on every r
                             EmailService ──▶ Gmail SMTP
 ```
 
-Every incoming request passes through the **JWT Filter** before reaching a controller, except for `/api/auth/register` and `/api/auth/login`. The **Scheduler** runs independently of any client request, on its own timer, and talks directly to the repository and mail layer.
+Every incoming request passes through the **JWT Filter** before reaching a controller, except for `/api/auth/register` and `/api/auth/login`. The **Scheduler** runs independently of any client request, on its own timer, and talks directly to the repository and mail layer. AI requests flow through their own dedicated **GeminiService**, kept separate from the rest of the business logic in `ApplicationService`.
 
 ## Live Demo
 
@@ -57,6 +59,8 @@ The API is deployed and publicly accessible:
 * **Redis** (caching, via Spring Cache abstraction — Simple Cache locally, Redis in Codespaces)
 * **Spring Mail + Spring Scheduler** (automated interview reminder emails)
 * **Cloudinary** (persistent storage for uploaded CV files)
+* **Google Gemini API** (AI-powered job fit / gap analysis)
+* **JUnit 5 + Mockito** (unit tests for core business logic)
 * **Docker** (containerized deployment on Render)
 * **Swagger / OpenAPI**
 * **Lombok**
@@ -81,6 +85,7 @@ The application is deployed as a Docker container on **Render**, connected to a 
 3. Set the following environment variables:
    - `MAIL_USERNAME` / `MAIL_PASSWORD` — for email notifications (see [Interview Reminders](#interview-reminders))
    - `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — for CV file storage (see [File Upload](#file-upload-cv))
+   - `GEMINI_API_KEY` — for AI gap analysis (see [AI Gap Analyzer](#ai-gap-analyzer))
 4. Run the application using Maven:
 
 ```bash
@@ -93,7 +98,7 @@ The application is deployed as a Docker container on **Render**, connected to a 
 ### Option 2: GitHub Codespaces
 
 1. Go to the repository on GitHub.
-2. Add `MAIL_USERNAME`, `MAIL_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` as [Codespaces repository secrets](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces) so they're injected automatically.
+2. Add `MAIL_USERNAME`, `MAIL_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and `GEMINI_API_KEY` as [Codespaces repository secrets](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces) so they're injected automatically.
 3. Click **Code > Codespaces > Create codespace on main**.
 4. The container automatically installs Java 17, PostgreSQL, and Redis.
 5. Run the application with the `codespaces` profile to enable Redis-backed caching:
@@ -120,6 +125,7 @@ The application is deployed as a Docker container on **Render**, connected to a 
 | `POST` | `/api/applications/{id}/upload-cv` | Uploads a PDF CV for the given application, replacing any previously uploaded file. *(requires token)* |
 | `GET` | `/api/applications/{id}/download-cv` | Downloads the CV file attached to the given application. *(requires token)* |
 | `DELETE` | `/api/applications/{id}/delete-cv` | Deletes the CV file attached to the given application. *(requires token)* |
+| `POST` | `/api/applications/{id}/analyze` | Runs (or returns a cached) AI gap analysis comparing the job description against the uploaded CV. *(requires token)* |
 
 ### Example Request Body (`POST` / `PUT` for `/api/applications`)
 
@@ -130,11 +136,12 @@ The application is deployed as a Docker container on **Render**, connected to a 
   "status": "Applied",
   "appliedDate": "2026-07-17",
   "interviewDate": "2026-07-25",
-  "notes": "Referral used."
+  "notes": "Referral used.",
+  "jobDescription": "We are looking for a Backend Developer Intern with experience in Java, Spring Boot, and PostgreSQL..."
 }
 ```
 
-`interviewDate` is optional — leave it out (or set it to `null`) until an interview is actually scheduled.
+`interviewDate` and `jobDescription` are optional — leave them out (or set to `null`) until an interview is scheduled or you're ready to run an analysis.
 
 ### Example Response
 
@@ -146,7 +153,10 @@ The application is deployed as a Docker container on **Render**, connected to a 
   "status": "Applied",
   "appliedDate": "2026-07-17",
   "interviewDate": "2026-07-25",
-  "notes": "Referral used."
+  "notes": "Referral used.",
+  "jobDescription": "We are looking for a Backend Developer Intern with experience in Java, Spring Boot, and PostgreSQL...",
+  "aiInsight": null,
+  "aiInsightGeneratedAt": null
 }
 ```
 
@@ -203,6 +213,43 @@ Files are stored on **Cloudinary** rather than local disk, so they persist acros
 cloudinary.cloud-name=${CLOUDINARY_CLOUD_NAME}
 cloudinary.api-key=${CLOUDINARY_API_KEY}
 cloudinary.api-secret=${CLOUDINARY_API_SECRET}
+```
+
+## AI Gap Analyzer
+
+`POST /api/applications/{id}/analyze` compares the `jobDescription` text stored on that specific application against the CV actually uploaded for that same application — sent together to the Gemini API (`gemini-3.8-flash`) using its multimodal input, so the model reads the PDF directly rather than relying on a fixed, hardcoded skill list. The response highlights the 2–3 most relevant gaps between the two and explains why each one matters for that specific role, then stores the result on the application as `aiInsight`, with a timestamp in `aiInsightGeneratedAt`.
+
+- **Isolated per application:** each application has its own `jobDescription` and `cvFilePath`, so analyzing application #1 never touches application #2's data, even if they share the same CV.
+- **Cached, not re-run needlessly:** if `aiInsight` is already populated, calling `/analyze` again returns the cached result immediately instead of calling Gemini again.
+- **Automatically invalidated** — `aiInsight` is cleared and a fresh analysis will be generated next time `/analyze` is called — whenever:
+  - the `jobDescription` is updated,
+  - a new CV is uploaded, or
+  - the CV is deleted.
+- **Fails safely:** if the Gemini API is unavailable or returns an error, the request returns a `503 Service Unavailable` with a clear message — it never crashes the request or corrupts existing data.
+
+Requires a `GEMINI_API_KEY` (free, from [Google AI Studio](https://aistudio.google.com), no billing needed):
+
+```properties
+gemini.api.key=${GEMINI_API_KEY}
+```
+
+### Example Response (`POST /api/applications/{id}/analyze`)
+
+![Example AI gap analysis response](response-body.png)
+
+## Testing
+
+Core business logic in `ApplicationService` is covered by unit tests (JUnit 5 + Mockito), focused on the rules that matter most for correctness and safety:
+
+- **Ownership isolation** — fetching an application that belongs to another user correctly results in a `404`, never leaking data across accounts.
+- **AI insight invalidation** — updating the job description, uploading a new CV, or deleting a CV clears any existing `aiInsight`, while an unrelated update leaves a valid analysis untouched.
+- **Gap analyzer caching** — a cached `aiInsight` is returned without calling the Gemini API again; a missing one triggers a real call.
+- **Input validation for `/analyze`** — missing job description or missing CV both fail with a clear `400`, before any external API call is attempted.
+
+Run the tests with:
+
+```bash
+mvn test
 ```
 
 ## API Documentation (Swagger)
@@ -306,3 +353,4 @@ Permanently deletes the authenticated user's account along with all of their app
 ## Known Limitations
 
 - **Production email delivery:** Render's free tier blocks outbound SMTP on port 587, so interview reminder emails are not sent when running on the deployed instance. This works correctly locally or in Codespaces.
+- **AI provider availability:** Gemini's free tier occasionally returns a temporary `503` under high demand on Google's side; the API surfaces this as a `503` rather than retrying automatically, so an occasional manual retry may be needed.
