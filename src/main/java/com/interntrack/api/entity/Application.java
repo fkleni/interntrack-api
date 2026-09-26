@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "applications")
@@ -50,4 +51,14 @@ public class Application {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String cvFilePath;
+
+    @Column(columnDefinition = "TEXT")
+    private String jobDescription;
+
+    @Column(columnDefinition = "TEXT")
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String aiInsight;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private LocalDateTime aiInsightGeneratedAt;
 }

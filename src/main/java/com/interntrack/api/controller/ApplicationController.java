@@ -22,6 +22,7 @@ public class ApplicationController {
     public ApplicationController(ApplicationService service) {
         this.service = service;
     }
+
     @PostMapping
     public ResponseEntity<Application> createApplication(@Valid @RequestBody Application application) {
         Application saved = service.saveApplication(application);
@@ -44,7 +45,7 @@ public class ApplicationController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Application> update(@PathVariable Long id,@Valid @RequestBody Application application) {
+    public ResponseEntity<Application> update(@PathVariable Long id, @Valid @RequestBody Application application) {
         return ResponseEntity.ok(service.updateApplication(id, application));
     }
 
@@ -74,5 +75,11 @@ public class ApplicationController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"cv-" + id + ".pdf\"")
                 .body(resource);
+    }
+
+    @PostMapping("/{id}/analyze")
+    public ResponseEntity<Application> analyze(@PathVariable Long id) {
+        Application result = service.analyzeApplication(id);
+        return ResponseEntity.ok(result);
     }
 }

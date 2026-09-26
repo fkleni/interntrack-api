@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,13 +23,16 @@ public class ApplicationService {
     private final ApplicationRepository repository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final GeminiService geminiService;
 
     public ApplicationService(ApplicationRepository repository,
                               UserRepository userRepository,
-                              FileStorageService fileStorageService) {
+                              FileStorageService fileStorageService,
+                              GeminiService geminiService) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.geminiService = geminiService;
     }
 
     public User getCurrentUser() {
@@ -55,11 +59,21 @@ public class ApplicationService {
     @CacheEvict(value = "dashboardStats", allEntries = true)
     public Application updateApplication(Long id, Application updated) {
         Application existing = getApplicationById(id);
+
+        boolean jobDescriptionChanged =
+                !java.util.Objects.equals(existing.getJobDescription(), updated.getJobDescription());
+
         existing.setCompanyName(updated.getCompanyName());
         existing.setPosition(updated.getPosition());
         existing.setStatus(updated.getStatus());
         existing.setAppliedDate(updated.getAppliedDate());
         existing.setNotes(updated.getNotes());
+        existing.setJobDescription(updated.getJobDescription());
+
+        if (jobDescriptionChanged) {
+            existing.setAiInsight(null);
+            existing.setAiInsightGeneratedAt(null);
+        }
 
         return repository.save(existing);
     }
@@ -99,6 +113,9 @@ public class ApplicationService {
 
         String storedPath = fileStorageService.store(file, application.getId());
         application.setCvFilePath(storedPath);
+        application.setAiInsight(null);
+        application.setAiInsightGeneratedAt(null);
+
         Application saved = repository.save(application);
 
         if (previousPath != null) {
@@ -117,6 +134,8 @@ public class ApplicationService {
 
         fileStorageService.delete(application.getCvFilePath());
         application.setCvFilePath(null);
+        application.setAiInsight(null);
+        application.setAiInsightGeneratedAt(null);
         repository.save(application);
     }
 
@@ -128,5 +147,38 @@ public class ApplicationService {
         }
 
         return fileStorageService.loadAsResource(application.getCvFilePath());
+    }
+
+    public Application analyzeApplication(Long id) {
+        Application application = getApplicationById(id);
+
+        if (application.getJobDescription() == null || application.getJobDescription().isBlank()) {
+            throw new IllegalArgumentException("This application has no job description to analyze against");
+        }
+        if (application.getCvFilePath() == null) {
+            throw new IllegalArgumentException("This application has no CV uploaded to analyze");
+        }
+
+        if (application.getAiInsight() != null) {
+            return application;
+        }
+
+        byte[] cvBytes = fileStorageService.downloadBytes(application.getCvFilePath());
+
+        String prompt = """
+                Compare the technical requirements in the following job description with the attached CV.
+                List the 2-3 most important missing skills or gaps, and briefly explain why each matters
+                for this specific role. Be concise and specific.
+
+                Job description:
+                %s
+                """.formatted(application.getJobDescription());
+
+        String insight = geminiService.analyzeJobFit(prompt, cvBytes);
+
+        application.setAiInsight(insight);
+        application.setAiInsightGeneratedAt(LocalDateTime.now());
+
+        return repository.save(application);
     }
 }

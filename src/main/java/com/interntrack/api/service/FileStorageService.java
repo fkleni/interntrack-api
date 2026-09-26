@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.util.Map;
 import java.util.UUID;
 
@@ -60,6 +61,14 @@ public class FileStorageService {
         }
     }
 
+    public byte[] downloadBytes(String fileUrl) {
+        try {
+            return new URL(fileUrl).openStream().readAllBytes();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to download file from storage: " + fileUrl, e);
+        }
+    }
+
     public void delete(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             return;
@@ -75,7 +84,6 @@ public class FileStorageService {
     private String extractPublicId(String secureUrl) {
         int uploadIndex = secureUrl.indexOf("/upload/");
         String afterUpload = secureUrl.substring(uploadIndex + "/upload/".length());
-        String withoutVersion = afterUpload.replaceFirst("^v\\d+/", "");
-        return withoutVersion;
+        return afterUpload.replaceFirst("^v\\d+/", "");
     }
 }
