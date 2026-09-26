@@ -67,7 +67,7 @@ The API is deployed and publicly accessible:
 
 ## Deployment Architecture
 
-The application is deployed as a Docker container on **Render**, connected to a **Neon** PostgreSQL database (both free tier). Every push to the `main` branch automatically triggers a redeploy via Render's built-in CI/CD.
+The application is deployed as a Docker container on **Render**, connected to a **Neon** PostgreSQL database (both free tier). Every push to main triggers the GitHub Actions test suite; Render then auto-deploys from main via its own build hook.
 
 ## How to Run
 
